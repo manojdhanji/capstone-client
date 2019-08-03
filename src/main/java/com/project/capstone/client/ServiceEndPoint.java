@@ -1,6 +1,7 @@
 package com.project.capstone.client;
 
 import java.text.MessageFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -16,91 +17,131 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import com.project.capstone.RestServiceProperties;
 import com.project.capstone.model.ClockState;
 import com.project.capstone.model.Employee;
 import com.project.capstone.model.Shift;
 
 public enum ServiceEndPoint {
-	GET_SHIFTS( "http://localhost:8081/capstone/shifts", HttpMethod.GET)
+	GET_SHIFTS( "http://{0}:{1}/capstone/shifts", HttpMethod.GET)
 	{
 		@Override
-		public void execute(RestTemplate restTemplate, Optional<Object[]> optPathVariables) {
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
 			ResponseEntity<List<Shift>> response = restTemplate.exchange(
-        			this.getUrl(),
-        			this.getMethod(),
-  				  null,
-  				  new ParameterizedTypeReference<List<Shift>>(){});
+				MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort()),
+        		this.getMethod(),
+  				null,
+  				new ParameterizedTypeReference<List<Shift>>(){}
+			);
         	if(Objects.nonNull(response) && response.hasBody()) {
         	   response.getBody().stream().forEach(System.out::println);
         	}
 		}
 	},
-	GET_EMPLOYEES("http://localhost:8081/capstone/employees/{0}", HttpMethod.GET)
+	GET_EMPLOYEES("http://{0}:{1}/capstone/employees/{2}", HttpMethod.GET)
 	{
 		@Override
-		public void execute(RestTemplate restTemplate,Optional<Object[]> optPathVariables) {
-			if(optPathVariables!=null && optPathVariables.isPresent()) {
-				String url = MessageFormat.format(
-	    				this.getUrl(),
-	    				optPathVariables.get());
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			
+			String empId = null;
+			if(Menu.yesOrNo(
+        			Optional.<String>of("Do you wish to enter an employee id (Y|*)? "))){
+        		empId=Menu.getEmployeeId();
+        	}
+			Optional<Object> optEmpId = Optional.<Object>ofNullable(empId);
+			if(optEmpId.isPresent()) {
+				String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(),optEmpId.get());
 	        	ResponseEntity<Employee> response = restTemplate.exchange(
-	        			url,
-	        			this.getMethod(),
-	  				  null,
-	  				  new ParameterizedTypeReference<Employee>(){});
+	        		url,
+	        		this.getMethod(),
+	  				null,
+	  				new ParameterizedTypeReference<Employee>(){}
+	        	);
 	        	if(Objects.nonNull(response) && response.hasBody()) {
 	        	   System.out.println(response.getBody());
 	        	}
 			}
 			else {
-				String url = MessageFormat.format(
-	    				this.getUrl(),
-	    				StringUtils.EMPTY);
-
-				ResponseEntity<List<Employee>> response = restTemplate.exchange(
-	        			url,
-	        			this.getMethod(),
-	  				  null,
-	  				  new ParameterizedTypeReference<List<Employee>>(){});
+				String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(),StringUtils.EMPTY);
+				ResponseEntity<List<Employee>> response = 
+						restTemplate.exchange(
+							url,
+							this.getMethod(),
+							null,
+							new ParameterizedTypeReference<List<Employee>>(){}
+						);
 	        	if(Objects.nonNull(response) && response.hasBody()) {
 	        	   response.getBody().stream().forEach(System.out::println);
 	        	}
 			}
 		}
 	},
-	/*
-	ADD_EMPLOYEE("http://localhost:8081/capstone/employees", HttpMethod.POST)
+	
+	ADD_EMPLOYEE("http://{0}:{1}/capstone/employees", HttpMethod.POST)
 	{
 		@Override
-		public void execute(RestTemplate restTemplate,Optional<Object[]> optPathVariables) {
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+			MultiValueMap<String, String> map= new LinkedMultiValueMap<String, String>();
+			map.add("id", Menu.getEmployeeId());
+			map.add("firstName", Menu.getStringInput("Please enter first name? "));
+			map.add("lastName", Menu.getStringInput("Please enter last name? "));
+			map.add("email", Menu.getEmail());
+			HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, headers);
+			String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort());
+			ResponseEntity<Integer> response = restTemplate.postForEntity(url, request, Integer.class );
+			if(response!=null && response.hasBody()){
+			   System.out.printf("%d record inserted %n",response.getBody());
+			}
 		}
 	},
-	UPDATE_EMPLOYEE("http://localhost:8081/capstone/employees/{0}", HttpMethod.PUT),
+	UPDATE_EMPLOYEE("http://{0}:{1}/capstone/employees/{2}", HttpMethod.PUT)
 	{
 		@Override
-		public void execute(RestTemplate restTemplate,Optional<Object[]> optPathVariables) {
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			String empId=Menu.getEmployeeId();
+			String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(),empId);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+			
+			MultiValueMap<String, String> map= new LinkedMultiValueMap<String, String>();
+			map.add("firstName", Menu.getStringInput("Please enter first name? "));
+			map.add("lastName", Menu.getStringInput("Please enter last name? "));
+			map.add("email", Menu.getEmail());
+			HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, headers);
+			ResponseEntity<Integer> response =
+			restTemplate.exchange(url, this.getMethod(),request, Integer.class);
+			
+			if(response!=null && response.hasBody()){
+			   System.out.printf("%d record updated %n",response.getBody());
+			}
+		}
+	},
+	DELETE_EMPLOYEE("http://{0}:{1}/capstone/employees/{2}", HttpMethod.DELETE)
+	{
+		@Override
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			String empId=Menu.getEmployeeId();
+			String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(),empId);			
+			ResponseEntity<Integer> response =
+			restTemplate.exchange(url, this.getMethod(),null,Integer.class);
+			
+			if(response!=null && response.hasBody()){
+			   System.out.printf("%d record deleted %n",response.getBody());
+			}
 		}
 	}
-	DELETE_EMPLOYEE("http://localhost:8081/capstone/employees/{0}", HttpMethod.DELETE),
+	,
+	CLOCK_IN("http://{0}:{1}/capstone/employees/{2}/clockin", HttpMethod.POST)
 	{
 		@Override
-		public void execute(RestTemplate restTemplate,Optional<Object[]> optPathVariables) {
-		}
-	}*/
-	
-	CLOCK_IN("http://localhost:8081/capstone/employees/{0}/clockin", HttpMethod.POST)
-	{
-		@Override
-		public void execute(RestTemplate restTemplate,Optional<Object[]> optPathVariables) {
-			
-			if(optPathVariables==null || !optPathVariables.isPresent()) {
-				System.err.println("Missing path variables");
-				return;
-			}
-			String url = MessageFormat.format(this.getUrl(), optPathVariables.get());
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			String empId=Menu.getEmployeeId();
+			String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(),empId);
         	int shiftId = -1;
         	ResponseEntity<Integer> shiftResponse = restTemplate.exchange(
-        		"http://localhost:8081/capstone/shifts/closest",
+        		MessageFormat.format("http://{0}:{1}/capstone/shifts/closest", restServiceProperties.getServiceHost(), restServiceProperties.getServicePort()),
         		HttpMethod.GET,
   				null,
   				new ParameterizedTypeReference<Integer>(){}
@@ -116,7 +157,7 @@ public enum ServiceEndPoint {
 			   map.add("shiftId", shiftId);
 			   HttpEntity<MultiValueMap<String, Integer>> request = new HttpEntity<MultiValueMap<String, Integer>>(map, headers);
 	
-			   ResponseEntity<ClockState> response = restTemplate.postForEntity( url, request , ClockState.class );
+			   ResponseEntity<ClockState> response = restTemplate.postForEntity(url, request, ClockState.class );
 			   if(response!=null && response.hasBody()){
 				   System.out.printf("%s%n",response.getBody().name());
 			   }
@@ -126,19 +167,61 @@ public enum ServiceEndPoint {
         	}
 		}
 	},
-	CLOCK_OUT("http://localhost:8081/capstone/employees/{0}/clockout", HttpMethod.PATCH)
+	CLOCK_OUT("http://{0}:{1}/capstone/employees/{2}/clockout", HttpMethod.PATCH)
 	{
 		@Override
-		public void execute(RestTemplate restTemplate,Optional<Object[]> optPathVariables) {
-			if(optPathVariables==null || !optPathVariables.isPresent()) {
-				System.err.println("Missing path variables");
-				return;
-			}
-			String url = MessageFormat.format(this.getUrl(), optPathVariables.get());
-        	ClockState response = restTemplate.patchForObject( url, null, ClockState.class );
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			String empId=Menu.getEmployeeId();
+			String url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(),empId);
+        	ClockState response = restTemplate.patchForObject(url, null, ClockState.class );
         	if(response!=null){
         		System.out.printf("%s%n",response.name());
         	}
+		}
+	},
+	
+	GET_EMPLOYEE_SHIFTS("http://{0}:{1}/capstone/employees/{2}", HttpMethod.GET)
+	{
+	
+		@Override
+		public void execute(RestTemplate restTemplate,RestServiceProperties restServiceProperties) {
+			String url = null;
+			String startDate = Menu.getDateInput(Optional.<String>of("Please enter start date (in yyyyMMdd format) "), DateTimeFormatter.BASIC_ISO_DATE);
+			String endDate = Menu.getDateInput(Optional.<String>of("Please enter start date (in yyyyMMdd format) "), DateTimeFormatter.BASIC_ISO_DATE);
+			String queryString = MessageFormat.format("?startDate={0}&endDate={1}",startDate,endDate);
+			if(Menu.yesOrNo(
+        			Optional.<String>of("Do you wish to enter an employee id (Y|*)? "))){
+				url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(), Menu.getEmployeeId())+ "/shifts" + queryString;
+				ResponseEntity<Employee> response = restTemplate.exchange(
+	        		url,
+	        		this.getMethod(),
+	  				null,
+	  				new ParameterizedTypeReference<Employee>(){}
+		        );
+	        	if(Objects.nonNull(response) && response.hasBody()) {
+	         	   System.out.println(response.getBody());
+	         	}
+        	}
+			else {
+				url = MessageFormat.format(this.getUrl(), restServiceProperties.getServiceHost(), restServiceProperties.getServicePort(), StringUtils.EMPTY)+ "shifts" + queryString;
+				ResponseEntity<List<Employee>> response = restTemplate.exchange(
+	        		url,
+	        		this.getMethod(),
+	  				null,
+	  				new ParameterizedTypeReference<List<Employee>>(){}
+	        	);
+	        	if(Objects.nonNull(response) && response.hasBody()) {
+	         	  response.getBody().stream().forEach(System.out::println);
+	         	}
+			}
+			/*
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+			MultiValueMap<String, String> map= new LinkedMultiValueMap<String, String>();
+			map.add("startDate", startDate);
+			map.add("endDate", endDate);
+			HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, headers);
+			*/
 		}
 	};
 	private ServiceEndPoint(String url, HttpMethod method) {
@@ -153,5 +236,5 @@ public enum ServiceEndPoint {
 	public String getUrl() {
 		return this.url;
 	}
-	public abstract void execute(RestTemplate restTemplate, Optional<Object[]> optPathVariables);
+	public abstract void execute(RestTemplate restTemplate, RestServiceProperties props);
 }

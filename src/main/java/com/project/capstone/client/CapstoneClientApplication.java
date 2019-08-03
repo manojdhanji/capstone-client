@@ -1,52 +1,59 @@
 package com.project.capstone.client;
 
-import java.util.Optional;
-import java.util.Scanner;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.web.client.RestTemplate;
 
+import com.project.capstone.RestServiceProperties;
+
 @SpringBootApplication
+@EnableConfigurationProperties(value = RestServiceProperties.class)
 public class CapstoneClientApplication implements CommandLineRunner {
 	@Autowired
 	private RestTemplate restTemplate;
+	@Autowired
+	private RestServiceProperties restServiceProperties;
 	public static void main(String[] args) {
 		SpringApplication.run(CapstoneClientApplication.class, args);
 	}
 
 	@Override
 	public void run(String... args) throws Exception {
-		Scanner scanner = new Scanner(System.in);
-		String empId = "";
 		do { 
-			
 		    Menu.options();
-		    int choice = scanner.nextInt();
+		    int choice = Menu.getIntInput();
 		    try {
 			    switch (choice) {
 			        case 1:
-			        	ServiceEndPoint.GET_SHIFTS.execute(restTemplate, Optional.<Object[]>empty());
+			        	ServiceEndPoint.GET_SHIFTS.execute(restTemplate, restServiceProperties);
 			        	break;
 			        case 2:
-			        	Object[] pathVariables = null;
-			        	
-			        	if(Menu.wishToContinue(
-			        			Optional.<String>of("Do you wish to enter an employee id (Y|*)?"), scanner)){
-			        		empId=Menu.getEmployeeId(scanner);
-					    	pathVariables = new Object[] {empId};
-			        	}
-					    ServiceEndPoint.GET_EMPLOYEES.execute(restTemplate, Optional.<Object[]>ofNullable(pathVariables));
+					    ServiceEndPoint.GET_EMPLOYEES.execute(restTemplate, restServiceProperties);
 			        	break;
 			        case 3:
-			        	empId=Menu.getEmployeeId(scanner);
-			        	ServiceEndPoint.CLOCK_IN.execute(restTemplate, Optional.<Object[]>of(new Object[] {empId}));
-			            break;
+			        	ServiceEndPoint.ADD_EMPLOYEE.execute(restTemplate, restServiceProperties);
+			        	break;
 			        case 4:
-			        	empId=Menu.getEmployeeId(scanner);
-			        	ServiceEndPoint.CLOCK_OUT.execute(restTemplate, Optional.<Object[]>of(new Object[] {empId}));
+			        	ServiceEndPoint.UPDATE_EMPLOYEE.execute(restTemplate, restServiceProperties);
+			        	break;
+			        case 5:
+			        	ServiceEndPoint.DELETE_EMPLOYEE.execute(restTemplate, restServiceProperties);
+			        	break;
+			        case 6:
+			        	ServiceEndPoint.CLOCK_IN.execute(restTemplate, restServiceProperties);
+			            break;
+			        case 7:
+			        	ServiceEndPoint.CLOCK_OUT.execute(restTemplate, restServiceProperties);
+			        	break;
+			        case 8:
+			        	ServiceEndPoint.GET_EMPLOYEE_SHIFTS.execute(restTemplate, restServiceProperties);
+			        	break;
+			        case 9:
+			        	Menu.closeMenu();
+			    		System.exit(0);
 			        	break;
 			        default:
 			        	throw new IllegalArgumentException("Incorrect option");
@@ -55,16 +62,6 @@ public class CapstoneClientApplication implements CommandLineRunner {
 		    catch(Exception e) {
 		    	System.err.println(e.getMessage());
 		    }
-        	if(!Menu.wishToContinue(
-        			Optional.<String>of("Do you wish continue (Y|*)?"), scanner)){
-		    	try {
-		    		scanner.close();
-		    		System.exit(0);
-		    	}
-		    	catch(Exception e) {
-		    		System.err.print(e.getMessage());
-		    	}
-        	}
 		}
 		while(true);
 	}
