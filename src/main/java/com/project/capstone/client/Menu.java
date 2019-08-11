@@ -1,11 +1,13 @@
 package com.project.capstone.client;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.stream.Stream;
 
+import com.project.capstone.model.Employee;
 import com.project.capstone.utils.Constants;
 
 public final class Menu {
@@ -21,6 +23,14 @@ public final class Menu {
 	    		);
 	    System.out.format("%d. %s\n", ServiceEndPoint.values().length+1, "EXIT");
 	    System.out.println("Please choose one of the above options");
+	}
+	public static Employee getEmployee() {
+		Employee emp = new Employee();
+    	emp.setEmpId(Menu.getEmployeeId());
+    	emp.setFirstName(Menu.getStringInput("Please enter first name? "));
+    	emp.setLastName(Menu.getStringInput("Please enter last name? "));
+    	emp.setEmail(Menu.getEmail());
+    	return emp;
 	}
 	public static String getEmployeeId() {
 		System.out.print("Please enter employee id (EMP-XXXX) ");
@@ -66,10 +76,17 @@ public final class Menu {
     	}
 	}
 	public static String getDateInput(Optional<String> optMessage, DateTimeFormatter format) {
-		if(optMessage.isPresent())
-			System.out.println(optMessage.get());
+		if(optMessage!=null && optMessage.isPresent())
+			System.out.print(optMessage.get());
 		String date = scanner.next();
 		LocalDate.parse(date,format);
 		return date;
+	}
+	public static String getTimeInput(Optional<String> optMessage) {
+		if(optMessage!=null && optMessage.isPresent())
+			System.out.print(optMessage.get());
+		String time = scanner.next();
+		LocalTime.parse(time, DateTimeFormatter.ofPattern("HHmm"));
+		return time;
 	}
 }
